@@ -1,0 +1,49 @@
+README
+
+This application computes the log-loss on a prediction task given a
+dictionary and a set of test sequences. The prediction is linked to a
+related project that computes dictionaries using Lempel-Ziv parsing of
+a training set of sequences [1] and is due to Nisenson et al. [2].
+
+
+EXECUTION
+
+The command-line options are as follows:
+
+General Configuration:
+  --help                    produce help message
+  --version                 show the version
+  --result arg (=./results) results directory.
+  --sequences arg           Sequences file
+  --model arg               Model file
+
+  
+The sequence file expects three columns separated by commas. The first
+column gives the sequence identifier; the second column is a running
+integer of the position of a string in the sequence, and the third
+column is the string of the sequence. E.g.,
+
+1,1,a
+1,2,b
+1,3,c
+...
+1,26,z
+
+is the alphabet given as a sequence.
+
+The dictionary (model) is contains the phrases extracted during
+Lempel-Ziv parsing. Based on these phrases, a tree is created which is
+queried for sub-strings of the sequences in order to compute the
+log-loss.
+
+The dictionary contains phrases where the symbols are separated by a
+"<>".
+
+BIBLIOGRAPHY
+
+[1] https://github.com/dahlem/lz-parsing
+[2] Nisenson, M., Yariv, I., El-Yaniv, R., & Meir, R. (2003). Towards
+ behaviometric security systems: Learning to identify a typist. In The
+ 7th European Conference on Principles and Practice of Knowledge
+ Discovery in Databases.
+
