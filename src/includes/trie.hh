@@ -121,12 +121,15 @@ void add(const ptypes::sequence &p_seq, Graph &p_graph, Vertex &p_root)
 
   for (; i < p_seq.size(); ++i) {
     nextV = find(p_seq[i], p_graph, curV);
+    p_graph[curV].freq++;
+#ifndef NDEBUG
+    std::cout << "Increment" << p_graph[curV].name << " to " << p_graph[curV].freq << std::endl;
+#endif /* NDEBUG */
 
     // break, because we have to add nodes now
     if (nextV == NULL) {
       break;
     } else {
-      p_graph[curV].freq++;
       curV = nextV;
     }
   }
@@ -139,6 +142,11 @@ void add(const ptypes::sequence &p_seq, Graph &p_graph, Vertex &p_root)
     p_graph[newV].id = numVertices;
     p_graph[newV].freq = 1;
     p_graph[newV].name = p_seq[i];
+
+#ifndef NDEBUG
+    std::cout << "Add edge between " << p_graph[curV].name << " and " << p_graph[newV].name << std::endl;
+    std::cout << "Source frequency: " << p_graph[curV].freq << "; target frequency: " << p_graph[newV].freq << std::endl;
+#endif /* NDEBUG */
 
     curV = newV;
 
