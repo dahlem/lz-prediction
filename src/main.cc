@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  std::cout << "ll: " << ll/boost::lexical_cast<double>(T);
+  std::cout << "ll: " << -ll/boost::lexical_cast<double>(T);
 
   boost::dynamic_properties dp;
   dp.property("id", get(&ptypes::trie::VertexProperties::id, g));
