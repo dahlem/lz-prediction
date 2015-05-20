@@ -25,6 +25,7 @@
 # include <boost/assert.hpp>
 #endif /* NDEBUG */
 
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <utility>
@@ -163,7 +164,7 @@ int main(int argc, char *argv[])
       std::cout << std::endl;
 #endif /* NDEBUG */
       double pHat = lz::trie::condProb(seq, g, root);
-      ll += pHat;
+      ll += std::log2(pHat);
       T++;
     }
   }
