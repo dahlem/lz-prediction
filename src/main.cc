@@ -169,7 +169,15 @@ int main(int argc, char *argv[])
     }
   }
 
-  std::cout << "ll: " << -ll/boost::lexical_cast<double>(T);
+#ifndef NDEBUG
+  std::cout << "Log-Loss: " << -ll/boost::lexical_cast<double>(T) << std::endl;
+#endif /* NDEBUG */
+
+  std::string outLogLossFile = args.result + "/log-loss.csv";
+  std::ofstream outLogLoss(outLogLossFile.c_str(), std::ios::out);
+  outLogLoss << "logLoss,T" << std::endl;
+  outLogLoss << -ll/boost::lexical_cast<double>(T) << "," << T << std::endl;
+  outLogLoss.close();
 
   boost::dynamic_properties dp;
   dp.property("id", get(&ptypes::trie::VertexProperties::id, g));
