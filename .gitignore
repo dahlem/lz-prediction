@@ -1,0 +1,49 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Makefiles
+Makefile
+Makefile.in
+configure
+libtool
+autom4te.cache/
+.deps/
+config.log
+config.status
+stamp-h1
+config/
+config.status
+config.log
+config.h
+config.h.in
+aclocal.m4
+
+# temp files
+*~
+src/lzp
