@@ -26,6 +26,7 @@
 #endif /* __STDC_CONSTANT_MACROS */
 
 
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -35,6 +36,7 @@ namespace lz
 
 typedef std::vector<std::string> sequence;
 typedef std::vector<sequence> sequences;
+typedef std::deque<std::string> NGram;
 
 }
 

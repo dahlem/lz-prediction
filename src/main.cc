@@ -26,6 +26,7 @@
 #endif /* NDEBUG */
 
 #include <cmath>
+#include <deque>
 #include <fstream>
 #include <iostream>
 #include <utility>
@@ -94,7 +95,7 @@ int main(int argc, char *argv[])
     std::getline(modelFile, line);
 
     if (line != "") {
-      std::vector<std::string> seq;
+      ptypes::sequence seq;
       boost::split(seq, line, boost::is_any_of("<>"), boost::token_compress_on);
 
       // build the trie structure
@@ -128,7 +129,7 @@ int main(int argc, char *argv[])
     boost::trim(line);
 
     if (line != "") {
-      std::vector<std::string> splitVec;
+      ptypes::sequence splitVec;
       boost::split(splitVec, line, boost::is_any_of(","), boost::token_compress_on);
 
       if (splitVec.size() != 3) {
@@ -152,47 +153,80 @@ int main(int argc, char *argv[])
   seqFile.close();
 
   // compute log-loss
-  boost::uint32_t T = 0;
-  double ll = 0.0;
+  std::vector<double> ll;
+  std::vector<boost::uint32_t> T;
+  ptypes::NGram ngram;
+
+  ll.resize(1 + args.order);
+  T.resize(1 + args.order);
+
   for (auto ss = seqs.begin(); ss != seqs.end(); ++ss) {
-    seq.clear();
+    ngram.clear();
     for (auto s = ss->begin(); s != ss->end(); ++s) {
-      seq.push_back(*s);
+      ngram.push_back(*s);
 #ifndef NDEBUG
       std::cout << "Compute pHat for: " << std::endl;
-      std::copy(seq.begin(), seq.end(), std::ostream_iterator<std::string>(std::cout, " "));
+      std::copy(ngram.begin(), ngram.end(), std::ostream_iterator<std::string>(std::cout, " "));
       std::cout << std::endl;
 #endif /* NDEBUG */
-      double pHat = lz::trie::condProb(seq, g, root);
-      ll += std::log2(pHat);
-      T++;
+
+      double pHat = lz::trie::condProb(ngram, g, root);
+      ll[0] += std::log2(pHat);
+    }
+    T[0] += ss->size();
+  }
+
+  if (args.order > 0) {
+    for (auto o = 1; o <= args.order; ++o) {
+      for (auto ss = seqs.begin(); ss != seqs.end(); ++ss) {
+        ngram.clear();
+        for (auto s = ss->begin(); s != ss->end(); ++s) {
+          ngram.push_back(*s);
+#ifndef NDEBUG
+          std::cout << "Compute pHat for: " << std::endl;
+          std::copy(ngram.begin(), ngram.end(), std::ostream_iterator<std::string>(std::cout, " "));
+          std::cout << std::endl;
+#endif /* NDEBUG */
+
+          if (ngram.size() > o) {
+            ngram.pop_front();
+          }
+          double pHat = lz::trie::condProb(ngram, g, root);
+          ll[o] += std::log2(pHat);
+        }
+        T[o] += ss->size();
+      }
     }
   }
 
 #ifndef NDEBUG
-  std::cout << "Log-Loss: " << -ll/boost::lexical_cast<double>(T) << std::endl;
+  std::cout << "Log-Loss: " << -ll/boost::lexical_cast<double>(T) << ", " << -ll_ff/boost::lexical_cast<double>(T_ff) << std::endl;
 #endif /* NDEBUG */
 
   std::string outLogLossFile = args.result + "/log-loss.csv";
   std::ofstream outLogLoss(outLogLossFile.c_str(), std::ios::out);
-  outLogLoss << "logLoss,T" << std::endl;
-  outLogLoss << -ll/boost::lexical_cast<double>(T) << "," << T << std::endl;
+  outLogLoss << "order,logloss,T" << std::endl;
+  for (auto i = 0; i < ll.size(); ++i) {
+    outLogLoss << i << "," << -ll[i]/boost::lexical_cast<double>(T[i]) << "," << T[i] << std::endl;
+  }
   outLogLoss.close();
 
-  boost::dynamic_properties dp;
-  dp.property("id", get(&ptypes::trie::VertexProperties::id, g));
-  dp.property("Name", get(&ptypes::trie::VertexProperties::name, g));
-  dp.property("Frequency", get(&ptypes::trie::VertexProperties::freq, g));
+  if (args.print_graph) {
+    boost::dynamic_properties dp;
+    dp.property("id", get(&ptypes::trie::VertexProperties::id, g));
+    dp.property("Name", get(&ptypes::trie::VertexProperties::name, g));
+    dp.property("Frequency", get(&ptypes::trie::VertexProperties::freq, g));
 
-  std::string outTreeFile = args.result + "/tree.gml";
-  std::ofstream outTree(outTreeFile.c_str(), std::ios::out);
-  boost::write_graphml(outTree, g, get(&ptypes::trie::VertexProperties::id, g), dp, false);
-  outTree.close();
+    std::string outTreeFile = args.result + "/tree.gml";
+    std::ofstream outTree(outTreeFile.c_str(), std::ios::out);
+    boost::write_graphml(outTree, g, get(&ptypes::trie::VertexProperties::id, g), dp, false);
+    outTree.close();
 
-  std::string outGVFile = args.result + "/tree.dot";
-  std::ofstream outGV(outGVFile.c_str(), std::ios::out);
-  boost::write_graphviz(outGV, g, boost::make_label_writer(get(&ptypes::trie::VertexProperties::name, g)));
-  outGV.close();
+    std::string outGVFile = args.result + "/tree.dot";
+    std::ofstream outGV(outGVFile.c_str(), std::ios::out);
+    boost::write_graphviz(outGV, g, boost::make_label_writer(get(&ptypes::trie::VertexProperties::name, g)));
+    outGV.close();
+  }
 
   return EXIT_SUCCESS;
 }

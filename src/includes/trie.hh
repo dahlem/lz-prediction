@@ -31,6 +31,7 @@
 #endif /* __STDC_CONSTANT_MACROS */
 
 #include <cstring>
+#include <deque>
 
 #include <boost/cstdint.hpp>
 #include <boost/foreach.hpp>
@@ -95,7 +96,7 @@ typedef boost::graph_traits <Graph>::out_edge_iterator OutEdgeIterator;
 typedef boost::graph_traits <Graph>::in_edge_iterator InEdgeIterator;
 
 
-Vertex find(const std::string &p_symbol, Graph &p_graph, Vertex &p_vertex)
+Vertex find(const ptypes::NGram::value_type &p_symbol, Graph &p_graph, Vertex &p_vertex)
 {
   BOOST_FOREACH(Edge e, (boost::out_edges(p_vertex, p_graph))) {
     bool found = false;
@@ -154,7 +155,7 @@ void add(const ptypes::sequence &p_seq, Graph &p_graph, Vertex &p_root)
   }
 }
 
-double condProb(ptypes::sequence &p_seq, Graph &p_graph, Vertex &p_root)
+double condProb(ptypes::NGram &p_seq, Graph &p_graph, Vertex &p_root)
 {
   Vertex curV = p_root, nextV;
 
@@ -192,6 +193,7 @@ double condProb(ptypes::sequence &p_seq, Graph &p_graph, Vertex &p_root)
 
   return childFreq/parentFreq;
 }
+
 
 }
 }
