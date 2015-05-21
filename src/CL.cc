@@ -54,6 +54,8 @@ CL::CL()
       (RESULT.c_str(), po::value <std::string>()->default_value("./results"), "results directory.")
       (SEQUENCES.c_str(), po::value <std::string>()->default_value(""), "Sequences file")
       (MODEL.c_str(), po::value <std::string>()->default_value(""), "Model file")
+      (ORDER.c_str(), po::value <boost::uint32_t>()->default_value(0), "Compute first-order log-loss.")
+      (PRINT_GRAPH.c_str(), po::value <bool>()->default_value(0), "Serialise the tree.")
       ;
 
   m_opt_desc->add(opt_general);
@@ -88,6 +90,14 @@ int CL::parse(int argc, char *argv[], args_t &p_args)
 
   if (vm.count(MODEL.c_str())) {
     p_args.model = vm[MODEL.c_str()].as <std::string>();
+  }
+
+  if (vm.count(ORDER.c_str())) {
+    p_args.order = vm[ORDER.c_str()].as <boost::uint32_t>();
+  }
+
+  if (vm.count(PRINT_GRAPH.c_str())) {
+    p_args.print_graph = vm[PRINT_GRAPH.c_str()].as <bool>();
   }
 
   return verify(p_args);

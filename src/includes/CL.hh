@@ -46,6 +46,8 @@ const std::string VERS = "version";
 const std::string MODEL = "model";
 const std::string SEQUENCES = "sequences";
 const std::string RESULT = "result";
+const std::string ORDER = "order";
+const std::string PRINT_GRAPH = "print_graph";
 
 
 /** @struct
@@ -55,13 +57,16 @@ struct args_t {
   std::string sequences;        /* sequences filename */
   std::string result;           /* results dir */
   std::string model;
+  boost::uint32_t order;
+  bool print_graph;
 
   args_t(args_t const &args)
-      : sequences(args.sequences), result(args.result), model(args.model)
+      : sequences(args.sequences), result(args.result), model(args.model),
+        order(args.order), print_graph(args.print_graph)
   {}
 
   args_t()
-      : sequences(""), result(""), model("")
+      : sequences(""), result(""), model(""), order(0), print_graph(0)
   {}
 
   friend std::ostream& operator <<(std::ostream &p_os, const args_t &p_args)
@@ -69,7 +74,9 @@ struct args_t {
     p_os << "Parameters are:    " << std::endl << std::endl;
     p_os << "Sequence file:     " << p_args.sequences << std::endl
          << "Model file:        " << p_args.model << std::endl
-         << "Results directory: " << p_args.result << std::endl;
+         << "Results directory: " << p_args.result << std::endl
+         << "Order:             " << p_args.order << std::endl
+         << "Print graph:       " << p_args.print_graph << std::endl;
 
     return p_os;
   }
