@@ -30,12 +30,14 @@
 # define __STDC_CONSTANT_MACROS
 #endif /* __STDC_CONSTANT_MACROS */
 
+#include <algorithm>
 #include <cstring>
 #include <deque>
 
 #include <boost/cstdint.hpp>
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include <boost/numeric/conversion/cast.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/depth_first_search.hpp>
 
@@ -62,7 +64,7 @@ struct VertexProperties
 typedef boost::adjacency_list<
   boost::vecS,
   boost::vecS,
-  boost::bidirectionalS,
+  boost::directedS,
   boost::property <boost::vertex_index_t, int, VertexProperties> > Graph;
 
 /** @typedef Vertex
@@ -95,6 +97,11 @@ typedef boost::graph_traits <Graph>::out_edge_iterator OutEdgeIterator;
  */
 typedef boost::graph_traits <Graph>::in_edge_iterator InEdgeIterator;
 
+/** @typedef FreqPropertyMap
+ * Specifies the frequency property map
+ */
+typedef boost::property_map<Graph, boost::uint32_t VertexProperties::*>::type FreqPropertyMap;
+
 
 Vertex find(const ptypes::NGram::value_type &p_symbol, Graph &p_graph, Vertex &p_vertex)
 {
@@ -113,24 +120,26 @@ Vertex find(const ptypes::NGram::value_type &p_symbol, Graph &p_graph, Vertex &p
   return NULL;
 }
 
-void add(const ptypes::sequence &p_seq, Graph &p_graph, Vertex &p_root)
+void add(const ptypes::sequence &p_seq, Graph &p_graph, Vertex &p_root, boost::uint32_t p_maxOrder, boost::uint32_t p_freq)
 {
   Vertex curV = p_root;
   Vertex nextV = NULL;
   boost::uint32_t i = 0;
   boost::uint32_t numVertices = boost::num_vertices(p_graph);
 
-  for (; i < p_seq.size(); ++i) {
+  boost::uint32_t order = std::min(boost::numeric_cast<boost::uint32_t>(p_seq.size()), p_maxOrder);
+  for (; i < order; ++i) {
     nextV = find(p_seq[i], p_graph, curV);
-    p_graph[curV].freq++;
-#ifndef NDEBUG
-    std::cout << "Increment" << p_graph[curV].name << " to " << p_graph[curV].freq << std::endl;
-#endif /* NDEBUG */
-
     // break, because we have to add nodes now
     if (nextV == NULL) {
+#ifndef NDEBUG
+      std::cout << "No edge to " << p_seq[i] << std::endl;
+#endif /* NDEBUG */
       break;
     } else {
+#ifndef NDEBUG
+      std::cout << "Walk along " << p_seq[i] << std::endl;
+#endif /* NDEBUG */
       curV = nextV;
     }
   }
@@ -146,18 +155,20 @@ void add(const ptypes::sequence &p_seq, Graph &p_graph, Vertex &p_root)
 
 #ifndef NDEBUG
     std::cout << "Add edge between " << p_graph[curV].name << " and " << p_graph[newV].name << std::endl;
-    std::cout << "Source frequency: " << p_graph[curV].freq << "; target frequency: " << p_graph[newV].freq << std::endl;
 #endif /* NDEBUG */
 
     curV = newV;
 
     numVertices += 1;
   }
+
+  // update the frequency of the last node added
+  p_graph[curV].freq = p_freq;
 }
 
 double condProb(ptypes::NGram &p_seq, Graph &p_graph, Vertex &p_root)
 {
-  Vertex curV = p_root, nextV;
+  Vertex curV = p_root, nextV, prevV;
 
   for (auto i = 0; i < p_seq.size(); ++i) {
 #ifndef NDEBUG
@@ -174,18 +185,15 @@ double condProb(ptypes::NGram &p_seq, Graph &p_graph, Vertex &p_root)
       nextV = find(p_seq[i], p_graph, curV);
 
       if (nextV == NULL) {
-        std::cerr << "ERROR: Cannot find first order!" << std::endl;
+        std::cerr << "ERROR: Cannot find first order for " << p_seq[i] << std::endl;
       }
     }
+    prevV = curV;
     curV = nextV;
   }
 
-  // we know in a tree there is only one parent
-  InEdgeIterator parent, in_end;
-  boost::tie(parent, in_end) = boost::in_edges(curV, p_graph);
-
   double childFreq = boost::lexical_cast<double>(p_graph[curV].freq);
-  double parentFreq = boost::lexical_cast<double>(p_graph[boost::source(*parent, p_graph)].freq);
+  double parentFreq = boost::lexical_cast<double>(p_graph[prevV].freq);
 
 #ifndef NDEBUG
   std::cout << "pHat = " << childFreq << "/" << parentFreq << " = " << childFreq/parentFreq << std::endl;
@@ -193,6 +201,115 @@ double condProb(ptypes::NGram &p_seq, Graph &p_graph, Vertex &p_root)
 
   return childFreq/parentFreq;
 }
+
+double argmaxProb(ptypes::NGram &p_seq, Graph &p_graph, Vertex &p_root)
+{
+  ptypes::NGram ngram = p_seq;
+  std::vector<double> probs;
+  std::vector<double>::iterator argmax;
+
+  double p = condProb(ngram, p_graph, p_root);
+  probs.push_back(p);
+
+  for (auto i = ngram.size(); i > 1; --i) {
+    ngram.pop_front();
+    p = condProb(ngram, p_graph, p_root);
+    probs.push_back(p);
+  }
+
+  argmax = std::max_element(probs.begin(), probs.end());
+  return *argmax;
+}
+
+
+
+template <class VertexFreqMap>
+class dfs_frequencies : public boost::default_dfs_visitor
+{
+ public:
+  dfs_frequencies(VertexFreqMap &p_freqMap)
+      : m_freqMap(p_freqMap) {
+#ifndef NDEBUG
+    std::cout << "dfs_frequencies" << std::endl;
+#endif /* NDEBUG */
+  }
+
+  ~dfs_frequencies() {
+#ifndef NDEBUG
+    std::cout << "~dfs_frequencies" << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Vertex, typename Graph>
+  void initialize_vertex(Vertex s, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Initialise: " << g[s].name << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Vertex, typename Graph>
+  void start_vertex(Vertex s, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Start: " << g[s].name << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Vertex, typename Graph>
+  void discover_vertex(Vertex u, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Discover: " << g[u].name << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Edge, typename Graph>
+  void examine_edge(Edge e, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Examine edge: " << g[boost::source(e, g)].name << "-" << g[boost::target(e, g)].name << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Edge, typename Graph>
+  void tree_edge(Edge e, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Tree edge: " << g[boost::source(e, g)].name << "-" << g[boost::target(e, g)].name << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Edge, typename Graph>
+  void back_edge(Edge e, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Back edge: " << g[boost::source(e, g)].name << "-" << g[boost::target(e, g)].name << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Edge, typename Graph>
+  void forward_or_cross_edge(Edge e, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Forward or Cross edge: " << g[boost::source(e, g)].name << "-" << g[boost::target(e, g)].name << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Edge, typename Graph>
+  void finish_edge(Edge e, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Finish edge: " << g[boost::source(e, g)].name << "-" << g[boost::target(e, g)].name << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Vertex, typename Graph>
+  void finish_vertex(Vertex u, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Finish vertex: " << g[u].name << std::endl;
+#endif /* NDEBUG */
+
+    BOOST_FOREACH(Edge e, boost::out_edges(u, g)) {
+      m_freqMap[u] += m_freqMap[boost::target(e, g)];
+    }
+  }
+
+ private:
+  VertexFreqMap &m_freqMap;
+};
 
 
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2011, 2012, 2015 Dominik Dahlem <dahlem@mit.edu>
+// CopYRIGHT (C) 2011, 2012, 2015 Dominik Dahlem <dahlem@mit.edu>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -54,8 +54,12 @@ CL::CL()
       (RESULT.c_str(), po::value <std::string>()->default_value("./results"), "results directory.")
       (SEQUENCES.c_str(), po::value <std::string>()->default_value(""), "Sequences file")
       (MODEL.c_str(), po::value <std::string>()->default_value(""), "Model file")
-      (ORDER.c_str(), po::value <boost::uint32_t>()->default_value(0), "Compute first-order log-loss.")
+      (ORDER.c_str(), po::value <boost::uint32_t>()->default_value(0), "Compute log-losses up to the given order.")
+      (MAX_ORDER.c_str(), po::value <boost::uint32_t>()->default_value(std::numeric_limits<boost::uint32_t>::max()), "Limit the size of the dictionary.")
+      (ADD_ALPHA.c_str(), po::value <bool>()->default_value(0), "Add alphabet to all nodes.")
       (PRINT_GRAPH.c_str(), po::value <bool>()->default_value(0), "Serialise the tree.")
+      (ARGMAX_PROB.c_str(), po::value <bool>()->default_value(0), "When computing the log-loss choose the most likely transition probability.")
+      (FREQ.c_str(), po::value <bool>()->default_value(0), "Frequencies given in model.")
       ;
 
   m_opt_desc->add(opt_general);
@@ -96,8 +100,24 @@ int CL::parse(int argc, char *argv[], args_t &p_args)
     p_args.order = vm[ORDER.c_str()].as <boost::uint32_t>();
   }
 
+  if (vm.count(MAX_ORDER.c_str())) {
+    p_args.max_order = vm[MAX_ORDER.c_str()].as <boost::uint32_t>();
+  }
+
+  if (vm.count(ADD_ALPHA.c_str())) {
+    p_args.add_alpha = vm[ADD_ALPHA.c_str()].as <bool>();
+  }
+
   if (vm.count(PRINT_GRAPH.c_str())) {
     p_args.print_graph = vm[PRINT_GRAPH.c_str()].as <bool>();
+  }
+
+  if (vm.count(ARGMAX_PROB.c_str())) {
+    p_args.argmax_prob = vm[ARGMAX_PROB.c_str()].as <bool>();
+  }
+
+  if (vm.count(FREQ.c_str())) {
+    p_args.freq = vm[FREQ.c_str()].as <bool>();
   }
 
   return verify(p_args);

@@ -27,6 +27,7 @@
 
 
 #include <deque>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -34,6 +35,7 @@
 namespace lz
 {
 
+typedef std::set<std::string> set;
 typedef std::vector<std::string> sequence;
 typedef std::vector<sequence> sequences;
 typedef std::deque<std::string> NGram;

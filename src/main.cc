@@ -80,30 +80,98 @@ int main(int argc, char *argv[])
   std::cout << "Reading model file..." << std::endl;
 #endif /* NDEBUG */
 
-  std::string line;
-
+  ptypes::set alphabet;
   ptypes::trie::Graph g;
   ptypes::trie::Vertex root = boost::add_vertex(g);
   g[root].name = "epsilon";
   g[root].freq = 0;
 
+  std::string line;
   while (!modelFile.eof()) {
+    std::getline(modelFile, line);
+
 #ifndef NDEBUG
     std::cout << "Read line..." << line << std::endl;
 #endif /* NDEBUG */
 
-    std::getline(modelFile, line);
-
     if (line != "") {
-      ptypes::sequence seq;
-      boost::split(seq, line, boost::is_any_of("<>"), boost::token_compress_on);
+      if (args.freq) {
+        // expect the model input to consist of the patterns separated by <> and
+        // a frequency for the leaf nodes separated by comma from the pattern
+        std::vector<std::string> modelLine;
+        boost::split(modelLine, line, boost::is_any_of(","), boost::token_compress_on);
 
-      // build the trie structure
-      lz::trie::add(seq, g, root);
+        if (modelLine.size() == 2) {
+          // the first part is the pattern
+          ptypes::sequence seq;
+          boost::split(seq, modelLine[0], boost::is_any_of("<>"), boost::token_compress_on);
+
+          // add elements to alphabet
+          std::copy(seq.begin(), seq.end(), std::inserter(alphabet, alphabet.end()));
+          boost::uint32_t freq = boost::lexical_cast<boost::uint32_t>(modelLine[1]);
+
+          // build the trie structure
+          lz::trie::add(seq, g, root, args.max_order, freq);
+        } else {
+          std::cerr << "Error: Expect comma separated model line in the form a<>b,10" << std::endl;
+        }
+      } else {
+        // expect the model input to consist of just the patterns separated by <>
+        ptypes::sequence seq;
+        boost::split(seq, line, boost::is_any_of("<>"), boost::token_compress_on);
+
+        // add elements to alphabet
+        std::copy(seq.begin(), seq.end(), std::inserter(alphabet, alphabet.end()));
+
+        // build the trie structure
+        lz::trie::add(seq, g, root, args.max_order, 1);
+      }
     }
   }
   // close the model file
   modelFile.close();
+
+  // add the alphabet to each node if it does not already exist
+  if (args.add_alpha) {
+    BOOST_FOREACH(ptypes::trie::Vertex v, (boost::vertices(g))) {
+      ptypes::set children = alphabet;
+      BOOST_FOREACH(ptypes::trie::Edge e, (boost::out_edges(v, g))) {
+        std::string name = g[boost::target(e, g)].name;
+        if (children.find(name) != children.end()) {
+          children.erase(name);
+        }
+      }
+      BOOST_FOREACH(std::string child, children) {
+        boost::uint32_t numVertices = boost::num_vertices(g);
+        ptypes::trie::Vertex newV = boost::add_vertex(g);
+        std::pair<ptypes::trie::Edge, bool> e = boost::add_edge(v, newV, g);
+
+        g[newV].id = numVertices + 1;
+        g[newV].freq = 1;
+        g[newV].name = child;
+      }
+    }
+  } else {
+    ptypes::set children = alphabet;
+    BOOST_FOREACH(ptypes::trie::Edge e, (boost::out_edges(root, g))) {
+      std::string name = g[boost::target(e, g)].name;
+      if (children.find(name) != children.end()) {
+        children.erase(name);
+      }
+    }
+    BOOST_FOREACH(std::string child, children) {
+      boost::uint32_t numVertices = boost::num_vertices(g);
+      ptypes::trie::Vertex newV = boost::add_vertex(g);
+      std::pair<ptypes::trie::Edge, bool> e = boost::add_edge(root, newV, g);
+
+      g[newV].id = numVertices + 1;
+      g[newV].freq = 1;
+      g[newV].name = child;
+    }
+  }
+
+  ptypes::trie::FreqPropertyMap vertex_freq_map = boost::get(&ptypes::trie::VertexProperties::freq, g);
+  boost::depth_first_search(g, boost::visitor(ptypes::trie::dfs_frequencies<ptypes::trie::FreqPropertyMap>(vertex_freq_map)));
 
   // read the test sequences
   std::ifstream seqFile;
@@ -122,11 +190,10 @@ int main(int argc, char *argv[])
   boost::uint32_t curSequenceID = std::numeric_limits<boost::uint32_t>::max();
 
   while (!seqFile.eof()) {
+    std::getline(seqFile, line);
 #ifndef NDEBUG
     std::cout << "Read line..." << line << std::endl;
 #endif /* NDEBUG */
-    std::getline(seqFile, line);
-    boost::trim(line);
 
     if (line != "") {
       ptypes::sequence splitVec;
@@ -170,7 +237,12 @@ int main(int argc, char *argv[])
       std::cout << std::endl;
 #endif /* NDEBUG */
 
-      double pHat = lz::trie::condProb(ngram, g, root);
+      double pHat = 0.0;
+      if (args.argmax_prob) {
+        pHat = lz::trie::argmaxProb(ngram, g, root);
+      } else {
+        pHat = lz::trie::condProb(ngram, g, root);
+      }
       ll[0] += std::log2(pHat);
     }
     T[0] += ss->size();
@@ -178,20 +250,28 @@ int main(int argc, char *argv[])
 
   if (args.order > 0) {
     for (auto o = 1; o <= args.order; ++o) {
+#ifndef NDEBUG
+      std::cout << "Compute log-loss for order cutoff " << o << std::endl;
+#endif /* NDEBUG */
       for (auto ss = seqs.begin(); ss != seqs.end(); ++ss) {
         ngram.clear();
         for (auto s = ss->begin(); s != ss->end(); ++s) {
           ngram.push_back(*s);
+          if (ngram.size() > o) {
+            ngram.pop_front();
+          }
 #ifndef NDEBUG
           std::cout << "Compute pHat for: " << std::endl;
           std::copy(ngram.begin(), ngram.end(), std::ostream_iterator<std::string>(std::cout, " "));
           std::cout << std::endl;
 #endif /* NDEBUG */
 
-          if (ngram.size() > o) {
-            ngram.pop_front();
+          double pHat = 0.0;
+          if (args.argmax_prob) {
+            pHat = lz::trie::argmaxProb(ngram, g, root);
+          } else {
+            pHat = lz::trie::condProb(ngram, g, root);
           }
-          double pHat = lz::trie::condProb(ngram, g, root);
           ll[o] += std::log2(pHat);
         }
         T[o] += ss->size();
@@ -199,14 +279,13 @@ int main(int argc, char *argv[])
     }
   }
 
-#ifndef NDEBUG
-  std::cout << "Log-Loss: " << -ll/boost::lexical_cast<double>(T) << ", " << -ll_ff/boost::lexical_cast<double>(T_ff) << std::endl;
-#endif /* NDEBUG */
-
   std::string outLogLossFile = args.result + "/log-loss.csv";
   std::ofstream outLogLoss(outLogLossFile.c_str(), std::ios::out);
   outLogLoss << "order,logloss,T" << std::endl;
   for (auto i = 0; i < ll.size(); ++i) {
+#ifndef NDEBUG
+    std::cout << i << "," << -ll[i]/boost::lexical_cast<double>(T[i]) << "," << T[i] << std::endl;
+#endif /* NDEBUG */
     outLogLoss << i << "," << -ll[i]/boost::lexical_cast<double>(T[i]) << "," << T[i] << std::endl;
   }
   outLogLoss.close();

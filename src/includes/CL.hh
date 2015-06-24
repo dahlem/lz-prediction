@@ -26,6 +26,8 @@
 #ifndef __LZ_MAIN_CL_HH__
 #define __LZ_MAIN_CL_HH__
 
+#include <limits>
+
 #include <boost/scoped_ptr.hpp>
 
 #include <boost/program_options/options_description.hpp>
@@ -47,8 +49,11 @@ const std::string MODEL = "model";
 const std::string SEQUENCES = "sequences";
 const std::string RESULT = "result";
 const std::string ORDER = "order";
+const std::string MAX_ORDER = "max_order";
 const std::string PRINT_GRAPH = "print_graph";
-
+const std::string ADD_ALPHA = "add_alpha";
+const std::string ARGMAX_PROB = "argmax_prob";
+const std::string FREQ = "freq";
 
 /** @struct
  * structure specifying the command line variables.
@@ -58,15 +63,21 @@ struct args_t {
   std::string result;           /* results dir */
   std::string model;
   boost::uint32_t order;
+  boost::uint32_t max_order;
   bool print_graph;
+  bool add_alpha;
+  bool argmax_prob;
+  bool freq;
 
   args_t(args_t const &args)
       : sequences(args.sequences), result(args.result), model(args.model),
-        order(args.order), print_graph(args.print_graph)
+        order(args.order), max_order(args.max_order), print_graph(args.print_graph), add_alpha(args.add_alpha),
+        argmax_prob(args.argmax_prob), freq(args.freq)
   {}
 
   args_t()
-      : sequences(""), result(""), model(""), order(0), print_graph(0)
+      : sequences(""), result(""), model(""), order(0), max_order(std::numeric_limits<boost::uint32_t>::max()), print_graph(0),
+        add_alpha(0), argmax_prob(0), freq(0)
   {}
 
   friend std::ostream& operator <<(std::ostream &p_os, const args_t &p_args)
@@ -76,6 +87,10 @@ struct args_t {
          << "Model file:        " << p_args.model << std::endl
          << "Results directory: " << p_args.result << std::endl
          << "Order:             " << p_args.order << std::endl
+         << "Max. Order:        " << p_args.max_order << std::endl
+         << "Add alphabet:      " << p_args.add_alpha << std::endl
+         << "Argmax Prob.:      " << p_args.argmax_prob << std::endl
+         << "Frequencies:       " << p_args.freq << std::endl
          << "Print graph:       " << p_args.print_graph << std::endl;
 
     return p_os;
