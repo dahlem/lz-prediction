@@ -29,12 +29,14 @@
 #include <deque>
 #include <set>
 #include <string>
+#include <tuple>
 #include <vector>
 
 
 namespace lz
 {
 
+typedef std::tuple<double, boost::uint32_t> probability;
 typedef std::set<std::string> set;
 typedef std::vector<std::string> sequence;
 typedef std::vector<sequence> sequences;

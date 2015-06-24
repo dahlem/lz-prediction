@@ -237,13 +237,13 @@ int main(int argc, char *argv[])
       std::cout << std::endl;
 #endif /* NDEBUG */
 
-      double pHat = 0.0;
+      ptypes::probability pHat;
       if (args.argmax_prob) {
         pHat = lz::trie::argmaxProb(ngram, g, root);
       } else {
         pHat = lz::trie::condProb(ngram, g, root);
       }
-      ll[0] += std::log2(pHat);
+      ll[0] += std::log2(std::get<0>(pHat))/std::get<1>(pHat);
     }
     T[0] += ss->size();
   }
@@ -266,13 +266,13 @@ int main(int argc, char *argv[])
           std::cout << std::endl;
 #endif /* NDEBUG */
 
-          double pHat = 0.0;
+          ptypes::probability pHat;
           if (args.argmax_prob) {
             pHat = lz::trie::argmaxProb(ngram, g, root);
           } else {
             pHat = lz::trie::condProb(ngram, g, root);
           }
-          ll[o] += std::log2(pHat);
+          ll[o] += std::log2(std::get<0>(pHat))/std::get<1>(pHat);
         }
         T[o] += ss->size();
       }

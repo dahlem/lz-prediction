@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <cstring>
 #include <deque>
+#include <tuple>
 
 #include <boost/cstdint.hpp>
 #include <boost/foreach.hpp>
@@ -166,11 +167,17 @@ void add(const ptypes::sequence &p_seq, Graph &p_graph, Vertex &p_root, boost::u
   p_graph[curV].freq = p_freq;
 }
 
-double condProb(ptypes::NGram &p_seq, Graph &p_graph, Vertex &p_root)
+bool tupleCompare(ptypes::probability left, ptypes::probability right)
+{
+  return std::get<0>(left)<std::get<0>(right);
+}
+
+ptypes::probability condProb(ptypes::NGram &p_seq, Graph &p_graph, Vertex &p_root)
 {
   Vertex curV = p_root, nextV, prevV;
+  auto i = 0;
 
-  for (auto i = 0; i < p_seq.size(); ++i) {
+  for (; i < p_seq.size(); ++i) {
 #ifndef NDEBUG
     std::cout << "Walk: " << p_seq[i] << std::endl;
 #endif /* NDEBUG */
@@ -199,16 +206,18 @@ double condProb(ptypes::NGram &p_seq, Graph &p_graph, Vertex &p_root)
   std::cout << "pHat = " << childFreq << "/" << parentFreq << " = " << childFreq/parentFreq << std::endl;
 #endif /* NDEBUG */
 
-  return childFreq/parentFreq;
+  double result = childFreq/parentFreq;
+
+  return std::make_tuple(result, i+1);
 }
 
-double argmaxProb(ptypes::NGram &p_seq, Graph &p_graph, Vertex &p_root)
+ptypes::probability argmaxProb(ptypes::NGram &p_seq, Graph &p_graph, Vertex &p_root)
 {
   ptypes::NGram ngram = p_seq;
-  std::vector<double> probs;
-  std::vector<double>::iterator argmax;
+  std::vector<probability> probs;
+  std::vector<ptypes::probability>::iterator argmax;
 
-  double p = condProb(ngram, p_graph, p_root);
+  auto p = condProb(ngram, p_graph, p_root);
   probs.push_back(p);
 
   for (auto i = ngram.size(); i > 1; --i) {
@@ -217,7 +226,7 @@ double argmaxProb(ptypes::NGram &p_seq, Graph &p_graph, Vertex &p_root)
     probs.push_back(p);
   }
 
-  argmax = std::max_element(probs.begin(), probs.end());
+  argmax = std::max_element(probs.begin(), probs.end(), tupleCompare);
   return *argmax;
 }
 
