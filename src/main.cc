@@ -170,8 +170,17 @@ int main(int argc, char *argv[])
     }
   }
 
+  // calculate the frequencies of each node occurring
   ptypes::trie::FreqPropertyMap vertex_freq_map = boost::get(&ptypes::trie::VertexProperties::freq, g);
   boost::depth_first_search(g, boost::visitor(ptypes::trie::dfs_frequencies<ptypes::trie::FreqPropertyMap>(vertex_freq_map)));
+
+  // calculate the statistical complexity and the degree of randomness
+  double C = 0;
+  double h = 0;
+  boost::depth_first_search(g, boost::visitor(ptypes::trie::dfs_entropies<ptypes::trie::FreqPropertyMap>(vertex_freq_map, h, C)));
+
+  std::cout << "Statistical Complexity: " << C << std::endl;
+  std::cout << "Degree of randomness: " << h << std::endl;
 
   // read the test sequences
   std::ifstream seqFile;

@@ -31,8 +31,11 @@
 #endif /* __STDC_CONSTANT_MACROS */
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <deque>
+#include <functional>
+#include <numeric>
 #include <tuple>
 
 #include <boost/cstdint.hpp>
@@ -65,7 +68,7 @@ struct VertexProperties
 typedef boost::adjacency_list<
   boost::vecS,
   boost::vecS,
-  boost::directedS,
+  boost::bidirectionalS,
   boost::property <boost::vertex_index_t, int, VertexProperties> > Graph;
 
 /** @typedef Vertex
@@ -318,6 +321,133 @@ class dfs_frequencies : public boost::default_dfs_visitor
 
  private:
   VertexFreqMap &m_freqMap;
+};
+
+
+template <class VertexFreqMap>
+class dfs_entropies : public boost::default_dfs_visitor
+{
+ public:
+  dfs_entropies(VertexFreqMap &p_freqMap, double &p_h, double &p_C)
+      : m_freqMap(p_freqMap), m_h(p_h), m_C(p_C) {
+#ifndef NDEBUG
+    std::cout << "dfs_entropies" << std::endl;
+#endif /* NDEBUG */
+  }
+
+  ~dfs_entropies() {
+#ifndef NDEBUG
+    std::cout << "~dfs_entropies" << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Vertex, typename Graph>
+  void initialize_vertex(Vertex s, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Initialise: " << g[s].name << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Vertex, typename Graph>
+  void start_vertex(Vertex s, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Start: " << g[s].name << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Vertex, typename Graph>
+  void discover_vertex(Vertex u, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Discover: " << g[u].name << std::endl;
+#endif /* NDEBUG */
+
+    if (boost::in_degree(u, g) > 0) {
+      double probContext = std::accumulate(m_condProbs.begin(), m_condProbs.end(), 1.0, std::multiplies<double>());
+      m_C -= probContext * std::log2(probContext);
+
+#ifndef NDEBUG
+      std::cout << "Conditional probabilities: ";
+      std::copy(m_condProbs.begin(), m_condProbs.end(), std::ostream_iterator<double>(std::cout, " "));
+      std::cout << std::endl;
+      std::cout << "Probability of the context: " << probContext << std::endl;
+      std::cout << "Intermediate result of C: " << m_C << std::endl;
+#endif /* NDEBUG */
+
+      double entropy = 0;
+      BOOST_FOREACH(Edge e, boost::out_edges(u, g)) {
+        double condProb = boost::lexical_cast<double>(m_freqMap[boost::target(e, g)])
+            / boost::lexical_cast<double>(m_freqMap[boost::source(e, g)]);
+        entropy -= condProb * std::log2(condProb);
+      }
+      m_h += probContext * entropy;
+
+#ifndef NDEBUG
+      std::cout << "Entropy of conditionals: " << entropy << std::endl;
+      std::cout << "Intermediate result of h: " << m_h << std::endl;
+#endif /* NDEBUG */
+    }
+  }
+
+  template <typename Edge, typename Graph>
+  void examine_edge(Edge e, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Examine edge: " << g[boost::source(e, g)].name << "-" << g[boost::target(e, g)].name << std::endl;
+#endif /* NDEBUG */
+
+    double condProb = boost::lexical_cast<double>(m_freqMap[boost::target(e, g)])
+        / boost::lexical_cast<double>(m_freqMap[boost::source(e, g)]);
+
+#ifndef NDEBUG
+    std::cout << "Target Frequency: " << boost::lexical_cast<double>(m_freqMap[boost::target(e, g)]) << std::endl;
+    std::cout << "Source Frequency: " << boost::lexical_cast<double>(m_freqMap[boost::source(e, g)]) << std::endl;
+    std::cout << "Conditional Probability: " << condProb << std::endl;
+#endif /* NDEBUG */
+
+    m_condProbs.push_back(condProb);
+  }
+
+  template <typename Edge, typename Graph>
+  void tree_edge(Edge e, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Tree edge: " << g[boost::source(e, g)].name << "-" << g[boost::target(e, g)].name << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Edge, typename Graph>
+  void back_edge(Edge e, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Back edge: " << g[boost::source(e, g)].name << "-" << g[boost::target(e, g)].name << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Edge, typename Graph>
+  void forward_or_cross_edge(Edge e, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Forward or Cross edge: " << g[boost::source(e, g)].name << "-" << g[boost::target(e, g)].name << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Edge, typename Graph>
+  void finish_edge(Edge e, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Finish edge: " << g[boost::source(e, g)].name << "-" << g[boost::target(e, g)].name << std::endl;
+#endif /* NDEBUG */
+  }
+
+  template <typename Vertex, typename Graph>
+  void finish_vertex(Vertex u, Graph &g) {
+#ifndef NDEBUG
+    std::cout << "Finish vertex: " << g[u].name << std::endl;
+#endif /* NDEBUG */
+
+    m_condProbs.pop_back();
+  }
+
+ private:
+  VertexFreqMap &m_freqMap;
+  double &m_h;
+  double &m_C;
+  std::vector<double> m_condProbs;
 };
 
 
