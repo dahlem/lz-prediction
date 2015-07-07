@@ -328,8 +328,8 @@ template <class VertexFreqMap>
 class dfs_entropies : public boost::default_dfs_visitor
 {
  public:
-  dfs_entropies(VertexFreqMap &p_freqMap, double &p_h, double &p_C)
-      : m_freqMap(p_freqMap), m_h(p_h), m_C(p_C) {
+  dfs_entropies(VertexFreqMap &p_freqMap, double &p_h, double &p_C, double &p_bic)
+      : m_freqMap(p_freqMap), m_h(p_h), m_C(p_C), m_bic(p_bic) {
 #ifndef NDEBUG
     std::cout << "dfs_entropies" << std::endl;
 #endif /* NDEBUG */
@@ -373,17 +373,19 @@ class dfs_entropies : public boost::default_dfs_visitor
       std::cout << "Intermediate result of C: " << m_C << std::endl;
 #endif /* NDEBUG */
 
-      double entropy = 0;
+      double entropy = 0.0;
       BOOST_FOREACH(Edge e, boost::out_edges(u, g)) {
         double condProb = boost::lexical_cast<double>(m_freqMap[boost::target(e, g)])
             / boost::lexical_cast<double>(m_freqMap[boost::source(e, g)]);
         entropy -= condProb * std::log2(condProb);
+        m_bic +=  boost::lexical_cast<double>(m_freqMap[boost::target(e, g)]) * std::log(condProb);
       }
       m_h += probContext * entropy;
 
 #ifndef NDEBUG
       std::cout << "Entropy of conditionals: " << entropy << std::endl;
       std::cout << "Intermediate result of h: " << m_h << std::endl;
+      std::cout << "Intermediate result of bic: " << m_bic << std::endl;
 #endif /* NDEBUG */
     }
   }
@@ -447,6 +449,7 @@ class dfs_entropies : public boost::default_dfs_visitor
   VertexFreqMap &m_freqMap;
   double &m_h;
   double &m_C;
+  double &m_bic;
   std::vector<double> m_condProbs;
 };
 

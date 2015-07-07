@@ -175,12 +175,17 @@ int main(int argc, char *argv[])
   boost::depth_first_search(g, boost::visitor(ptypes::trie::dfs_frequencies<ptypes::trie::FreqPropertyMap>(vertex_freq_map)));
 
   // calculate the statistical complexity and the degree of randomness
-  double C = 0;
-  double h = 0;
-  boost::depth_first_search(g, boost::visitor(ptypes::trie::dfs_entropies<ptypes::trie::FreqPropertyMap>(vertex_freq_map, h, C)));
+  double C = 0.0;
+  double h = 0.0;
+  double bic = 0.0;
+  boost::depth_first_search(g, boost::visitor(ptypes::trie::dfs_entropies<ptypes::trie::FreqPropertyMap>(vertex_freq_map, h, C, bic)));
+  bic = -2.0 * bic + std::log(boost::lexical_cast<double>(args.sample_size))
+      * (std::log(boost::lexical_cast<double>(alphabet.size())) - 1.0)
+      * std::log(boost::lexical_cast<double>(boost::num_vertices(g)));
 
   std::cout << "Statistical Complexity: " << C << std::endl;
   std::cout << "Degree of randomness: " << h << std::endl;
+  std::cout << "BIC: " << bic << std::endl;
 
   // read the test sequences
   std::ifstream seqFile;
