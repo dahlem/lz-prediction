@@ -54,6 +54,7 @@ const std::string PRINT_GRAPH = "print_graph";
 const std::string ADD_ALPHA = "add_alpha";
 const std::string ARGMAX_PROB = "argmax_prob";
 const std::string FREQ = "freq";
+const std::string SAMPLE_SIZE = "sample_size";
 
 /** @struct
  * structure specifying the command line variables.
@@ -68,16 +69,17 @@ struct args_t {
   bool add_alpha;
   bool argmax_prob;
   bool freq;
+  boost::uint32_t sample_size;
 
   args_t(args_t const &args)
       : sequences(args.sequences), result(args.result), model(args.model),
         order(args.order), max_order(args.max_order), print_graph(args.print_graph), add_alpha(args.add_alpha),
-        argmax_prob(args.argmax_prob), freq(args.freq)
+        argmax_prob(args.argmax_prob), freq(args.freq), sample_size(args.sample_size)
   {}
 
   args_t()
       : sequences(""), result(""), model(""), order(0), max_order(std::numeric_limits<boost::uint32_t>::max()), print_graph(0),
-        add_alpha(0), argmax_prob(0), freq(0)
+        add_alpha(0), argmax_prob(0), freq(0), sample_size(0)
   {}
 
   friend std::ostream& operator <<(std::ostream &p_os, const args_t &p_args)
@@ -91,6 +93,7 @@ struct args_t {
          << "Add alphabet:      " << p_args.add_alpha << std::endl
          << "Argmax Prob.:      " << p_args.argmax_prob << std::endl
          << "Frequencies:       " << p_args.freq << std::endl
+         << "Sample size:       " << p_args.sample_size << std::endl
          << "Print graph:       " << p_args.print_graph << std::endl;
 
     return p_os;

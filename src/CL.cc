@@ -60,6 +60,7 @@ CL::CL()
       (PRINT_GRAPH.c_str(), po::value <bool>()->default_value(0), "Serialise the tree.")
       (ARGMAX_PROB.c_str(), po::value <bool>()->default_value(0), "When computing the log-loss choose the most likely transition probability.")
       (FREQ.c_str(), po::value <bool>()->default_value(0), "Frequencies given in model.")
+      (SAMPLE_SIZE.c_str(), po::value <boost::uint32_t>()->default_value(0), "Sample size.")
       ;
 
   m_opt_desc->add(opt_general);
@@ -118,6 +119,10 @@ int CL::parse(int argc, char *argv[], args_t &p_args)
 
   if (vm.count(FREQ.c_str())) {
     p_args.freq = vm[FREQ.c_str()].as <bool>();
+  }
+
+  if (vm.count(SAMPLE_SIZE.c_str())) {
+    p_args.sample_size = vm[SAMPLE_SIZE.c_str()].as <boost::uint32_t>();
   }
 
   return verify(p_args);
