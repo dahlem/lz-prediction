@@ -10,7 +10,7 @@
 
 AC_PREREQ(2.61)
 AC_INIT([Lempel-Ziv Prediction],
-        [0.7],
+        [0.8],
         [Dominik Dahlem dominik.dahlem@gmail.com], 
         [lz-pred])
 
